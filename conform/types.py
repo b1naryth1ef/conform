@@ -1,7 +1,9 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 import ast
 from types import FunctionType, CodeType
+
+import six
 
 from conform import clauses
 
@@ -11,11 +13,27 @@ class BaseType(object):
         self.required = required
 
     def compile_load(self, name='f'):
-        ast_clauses = []
-        for clause in self._compile_load_clauses():
-            for ast_clause in clause().compile():
-                ast_clauses.append(ast_clause)
+        # First gather a set of clauses
+        _clauses = []
 
+        if self.required:
+            _clauses.append(clauses.assert_not_none(
+                'value',
+            ))
+        else:
+            _clauses.append(clauses.return_static_if(
+                clauses.compare_is('value', 'None'),
+                'None'
+            ))
+
+        for clause in self._compile_load_clauses():
+            _clauses.append(clause)
+
+        _clauses.append(clauses.return_static('value'))
+
+        print(_clauses)
+
+        # Now we generate a function with a body containing our clauses
         func = ast.FunctionDef(
                 name=name,
                 args=ast.arguments(
@@ -23,8 +41,8 @@ class BaseType(object):
                     vararg=None,
                     kwarg=None,
                     defaults=[],
-                    ),
-                body=ast_clauses,
+                ),
+                body=_clauses,
                 decorator_list=[],
                 lineno=1,
                 col_offset=0)
@@ -35,15 +53,18 @@ class BaseType(object):
         function_code = [c for c in module_code.co_consts if isinstance(c, CodeType)][0]
         return FunctionType(function_code, globals())
 
-    def _compile_load_clauses(self):
-        base = []
-
-        if self.required:
-            base.append(clauses.EnsureNotNone)
-
-        return base
-
 
 class TextType(BaseType):
     def _compile_load_clauses(self):
-        return super(TextType, self)._compile_load_clauses()
+        if six.PY2:
+            # If the instance is not unicode, we must decode it as unicode
+            yield clauses.stmt_if(
+                clauses.call(clauses.name('isinstance'), [clauses.name('value'), clauses.name('str')]),
+                [clauses.stmt_return(
+                    clauses.call(clauses.attr('value', 'decode'), [clauses.str('utf-8')])
+                )]
+            )
+        else:
+            yield clauses.stmt_return(
+                clauses.call(clauses.name('str'), [clauses.name('value')])
+            )

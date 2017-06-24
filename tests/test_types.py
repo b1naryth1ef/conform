@@ -1,3 +1,5 @@
+import six
+
 from unittest import TestCase
 
 from conform.types import TextType
@@ -11,4 +13,16 @@ class TestTypes(TestCase):
         with self.assertRaises(Exception):
             f(None)
 
-        f(1)
+        self.assertEqual(f(1), 1)
+
+        txt = TextType(required=False)
+        f = txt.compile_load()
+
+        self.assertEqual(f(None), None)
+
+        if six.PY2:
+            self.assertTrue(isinstance(f('test'), unicode))
+        else:
+            self.assertTrue(isinstance(f('test'), str))
+
+        self.assertEqual(f('test'), 'test')
