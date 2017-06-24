@@ -29,7 +29,7 @@ class BaseType(object):
         for clause in self._compile_load_clauses():
             _clauses.append(clause)
 
-        _clauses.append(clauses.return_static('value'))
+        # _clauses.append(clauses.return_static('value'))
 
         print(_clauses)
 
@@ -57,14 +57,33 @@ class BaseType(object):
 class TextType(BaseType):
     def _compile_load_clauses(self):
         if six.PY2:
-            # If the instance is not unicode, we must decode it as unicode
+            # If the instance is that of a string (e.g. raw bytes) we must decode
+            #  it as a unicode string.
             yield clauses.stmt_if(
                 clauses.call(clauses.name('isinstance'), [clauses.name('value'), clauses.name('str')]),
                 [clauses.stmt_return(
                     clauses.call(clauses.attr('value', 'decode'), [clauses.str('utf-8')])
                 )]
             )
+            # Otherwise we just want to cast to unicode
+            # TODO: try catch ?
+            yield clauses.stmt_return(
+                clauses.call(clauses.name('unicode'), [clauses.name('value')])
+            )
         else:
             yield clauses.stmt_return(
                 clauses.call(clauses.name('str'), [clauses.name('value')])
             )
+
+
+class IntType(BaseType):
+    def _compile_load_clauses(self):
+        yield clauses.stmt_try_except(
+            [clauses.stmt_return(clauses.call(clauses.name('int'), [clauses.name('value')]))],
+            {
+                'ValueError': [clauses.stmt_raise(clauses.call(
+                    clauses.name('Exception'),
+                    [clauses.str('bad number bro')]
+                ))]
+            }
+        )

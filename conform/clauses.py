@@ -5,24 +5,23 @@ class Clause(object):
     pass
 
 
+def stmt_raise(a):
+    return ast.Raise(type=a, inst=None, tback=None, lineno=1, col_offset=0)
+
+
 def assert_not_none(var, exception_type='Exception', exception_msg='Generic Exception'):
     return ast.If(
         test=compare_is(var, 'None'),
         body=[
-            ast.Raise(
-                type=ast.Call(
-                    func=ast.Name(id=exception_type, ctx=ast.Load(), lineno=1, col_offset=0),
-                    args=[ast.Str(s=exception_msg, lineno=1, col_offset=0)],
-                    keywords=[],
-                    starargs=None,
-                    kwargs=None,
-                    lineno=1,
-                    col_offset=0),
-                inst=None,
-                tback=None,
+            stmt_raise(ast.Call(
+                func=ast.Name(id=exception_type, ctx=ast.Load(), lineno=1, col_offset=0),
+                args=[ast.Str(s=exception_msg, lineno=1, col_offset=0)],
+                keywords=[],
+                starargs=None,
+                kwargs=None,
                 lineno=1,
                 col_offset=0
-            )
+            ))
         ],
         orelse=[],
         lineno=1,
@@ -53,6 +52,10 @@ def compare_is(left, right, invert=False):
         col_offset=0)
 
 
+def stmt_not(operand):
+    return ast.UnaryOp(op=ast.Not(), operand=operand, lineno=1, col_offset=0)
+
+
 def stmt_if(test, body, orelse=None):
     return ast.If(
         test=test,
@@ -79,8 +82,8 @@ def call(func, args):
     )
 
 
-def name(v):
-    return ast.Name(id=v, ctx=ast.Load(), lineno=1, col_offset=0)
+def name(v, store=False):
+    return ast.Name(id=v, ctx=ast.Load() if not store else ast.Store(), lineno=1, col_offset=0)
 
 
 def attr(left, right):
@@ -89,3 +92,25 @@ def attr(left, right):
 
 def str(s):
     return ast.Str(s=s, lineno=1, col_offset=0)
+
+
+def stmt_try_except(top, handlers):
+    return ast.TryExcept(
+        body=top,
+        handlers=[
+            ast.ExceptHandler(type=name(k), name=None, body=v, lineno=1, col_offset=0)
+            for k, v in handlers.items()
+        ],
+        orelse=[],
+        lineno=1,
+        col_offset=0,
+    )
+
+
+def assign(left, right):
+    return ast.Assign(
+        targets=left,
+        value=right,
+        lineno=1,
+        col_offset=0,
+    )

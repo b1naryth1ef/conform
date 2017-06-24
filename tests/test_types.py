@@ -2,7 +2,7 @@ import six
 
 from unittest import TestCase
 
-from conform.types import TextType
+from conform.types import TextType, IntType
 
 
 class TestTypes(TestCase):
@@ -13,7 +13,7 @@ class TestTypes(TestCase):
         with self.assertRaises(Exception):
             f(None)
 
-        self.assertEqual(f(1), 1)
+        self.assertEqual(f(1), '1')
 
         txt = TextType(required=False)
         f = txt.compile_load()
@@ -26,3 +26,12 @@ class TestTypes(TestCase):
             self.assertTrue(isinstance(f('test'), str))
 
         self.assertEqual(f('test'), 'test')
+
+    def test_int_type_compile(self):
+        f = IntType().compile_load()
+
+        self.assertEqual(f(1), 1)
+        self.assertEqual(f('1'), 1)
+
+        with self.assertRaises(Exception):
+            f('asdf')
